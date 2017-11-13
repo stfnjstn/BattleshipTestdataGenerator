@@ -102,14 +102,19 @@ class ViewController: NSViewController {
     
     func battleFieldToString(battleField: [[Int]]) -> String {
         var matrixCSV = ""
-        for row in battleField {
+        for i in 0..<valueRowSize {
+            var row = battleField[i]
             var rowCSV = ""
-            for col in row {
-                rowCSV.append(String(col))
-                rowCSV.append(valueCSVSeparator)
+            for j in 0..<valueRowSize {
+                rowCSV.append(String(row[j]))
+                if j < valueRowSize - 1 {
+                    rowCSV.append(valueCSVSeparator)
+                }
             }
             if mode != .array {
                 rowCSV.append("\n")
+            } else if i < valueRowSize - 1  {
+                rowCSV.append(valueCSVSeparator)
             }
             matrixCSV.append(rowCSV)
         }
@@ -164,7 +169,6 @@ class ViewController: NSViewController {
                     }
                     bSuccess = checkRulesVertical(shipCoord: shipCoord, matrix: matrix)
                 }
-                print(bSuccess)
             }
             
             // fillMatrix
@@ -172,8 +176,6 @@ class ViewController: NSViewController {
                 matrix[cell.x][cell.y] = 1
             }
         }
-        
-        print(matrix)
         return matrix
     }
     
