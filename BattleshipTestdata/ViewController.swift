@@ -24,8 +24,6 @@ struct Vector {
     var y = 0
 }
 
-let csvSeparator = " "
-
 class ViewController: NSViewController {
 
     override func viewDidLoad() {
@@ -45,11 +43,13 @@ class ViewController: NSViewController {
     @IBOutlet weak var numberOfShips: NSTextField!
     @IBOutlet weak var numberOfTrainingData: NSTextField!
     @IBOutlet var resultField: NSTextView!
+    @IBOutlet weak var csvSeparator: NSTextField!
     
     var valueRowSize = 0
     var valueShipSize = 0
     var valueShips = 0
     var valueTrainingData = 0
+    var valueCSVSeparator = " "
     var mode = Mode.matrix
     
     var battleFields: [[[Int]]] = []
@@ -68,15 +68,19 @@ class ViewController: NSViewController {
         }
     }
     
+    @IBAction func copyToClipboard(_ sender: Any) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(resultField.string, forType: .string)
+    }
+    
+    
     @IBAction func generateCSV(_ sender: NSButton) {
         
         valueRowSize = covertNumeric(value: rowSize.cell!.title)
         valueShipSize = covertNumeric(value: shipSize.cell!.title)
         valueShips = covertNumeric(value: numberOfShips.cell!.title)
         valueTrainingData = covertNumeric(value: numberOfTrainingData.cell!.title)
-        
-       
-        print(rowSize.cell!.title)
+        valueCSVSeparator = csvSeparator.cell!.title
       
         battleFields = []
         
@@ -86,12 +90,6 @@ class ViewController: NSViewController {
         
         resultField.string = battleFieldsToString()
         
-    }
-    
-    func covertNumeric(value: String) -> Int {
-        var replaced = value.replacingOccurrences(of: ".", with: "")
-        replaced = replaced.replacingOccurrences(of: ",", with: "")
-        return Int(replaced)!
     }
     
     func battleFieldsToString() -> String {
@@ -108,7 +106,7 @@ class ViewController: NSViewController {
             var rowCSV = ""
             for col in row {
                 rowCSV.append(String(col))
-                rowCSV.append(csvSeparator)
+                rowCSV.append(valueCSVSeparator)
             }
             if mode != .array {
                 rowCSV.append("\n")
@@ -124,21 +122,8 @@ class ViewController: NSViewController {
         return matrixCSV
     }
     
-    func battleFieldsTofile() {
-        let fileName = "Battlefields.csv"
-        let path = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName)
-        var csvText = ""
-        csvText.append(battleFieldsToString())
-        do {
-            try csvText.write(to: path!, atomically: true, encoding: String.Encoding.utf8)
-        } catch {
-            print("Failed to create file")
-            print("\(error)")
-        }
-    }
-    
     func generateBattlefield()-> [[Int]] {
-        var matrix = [[Int]]() //= Array(repeating: Array(repeating: 0, count: valueRowSize), count: valueRowSize)
+        var matrix = [[Int]]()
         
         for _ in 0..<valueRowSize {
             var row = [Int]()
@@ -148,11 +133,7 @@ class ViewController: NSViewController {
             matrix.append(row)
             
         }
-        //matrix[0][0] = 1
-        //print(matrix)
-        
-        
-        
+      
         var bSuccess = false
         var vector = Vector(x: 0, y: 0)
         for _ in 0..<valueShips {
@@ -335,18 +316,12 @@ class ViewController: NSViewController {
         }
         return true
     }
+    
+    func covertNumeric(value: String) -> Int {
+        var replaced = value.replacingOccurrences(of: ".", with: "")
+        replaced = replaced.replacingOccurrences(of: ",", with: "")
+        return Int(replaced)!
+    }
 }
-
-
-//[[0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-// [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-// [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-// [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-// [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-// [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-// [1, 1, 1, 1, 0, 1, 1, 1, 1, 0],
-// [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-// [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-// [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
 
 
