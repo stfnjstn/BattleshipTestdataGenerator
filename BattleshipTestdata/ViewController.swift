@@ -8,6 +8,24 @@
 
 import Cocoa
 
+enum Direction: Int {
+    case horizontal
+    case vertical
+}
+
+enum Mode: Int {
+    case array
+    case matrix
+    case human
+}
+
+struct Vector {
+    var x = 0
+    var y = 0
+}
+
+let csvSeparator = " "
+
 class ViewController: NSViewController {
 
     override func viewDidLoad() {
@@ -22,6 +40,313 @@ class ViewController: NSViewController {
         }
     }
 
+    @IBOutlet weak var rowSize: NSTextField!
+    @IBOutlet weak var shipSize: NSTextField!
+    @IBOutlet weak var numberOfShips: NSTextField!
+    @IBOutlet weak var numberOfTrainingData: NSTextField!
+    @IBOutlet var resultField: NSTextView!
+    
+    var valueRowSize = 0
+    var valueShipSize = 0
+    var valueShips = 0
+    var valueTrainingData = 0
+    var mode = Mode.matrix
+    
+    var battleFields: [[[Int]]] = []
+    
+    @IBAction func modeChanged(_ sender: NSSegmentedControl) {
+        if sender.selectedSegment == 0 {
+            mode = .matrix
+        } else if sender.selectedSegment == 1 {
+            mode = .array
+        } else {
+            mode = .human
+        }
+    
+        if battleFields.count > 0 {
+            resultField.string = battleFieldsToString()
+        }
+    }
+    
+    @IBAction func generateCSV(_ sender: NSButton) {
+        
+        valueRowSize = covertNumeric(value: rowSize.cell!.title)
+        valueShipSize = covertNumeric(value: shipSize.cell!.title)
+        valueShips = covertNumeric(value: numberOfShips.cell!.title)
+        valueTrainingData = covertNumeric(value: numberOfTrainingData.cell!.title)
+        
+       
+        print(rowSize.cell!.title)
+      
+        battleFields = []
+        
+        for _ in 0..<valueTrainingData {
+            battleFields.append(generateBattlefield())
+        }
+        
+        resultField.string = battleFieldsToString()
+        
+    }
+    
+    func covertNumeric(value: String) -> Int {
+        var replaced = value.replacingOccurrences(of: ".", with: "")
+        replaced = replaced.replacingOccurrences(of: ",", with: "")
+        return Int(replaced)!
+    }
+    
+    func battleFieldsToString() -> String {
+        var csvText = ""
+        for battleField in battleFields {
+            csvText.append(battleFieldToString(battleField: battleField))
+        }
+        return csvText
+    }
+    
+    func battleFieldToString(battleField: [[Int]]) -> String {
+        var matrixCSV = ""
+        for row in battleField {
+            var rowCSV = ""
+            for col in row {
+                rowCSV.append(String(col))
+                rowCSV.append(csvSeparator)
+            }
+            if mode != .array {
+                rowCSV.append("\n")
+            }
+            matrixCSV.append(rowCSV)
+        }
+        if mode == .array {
+            matrixCSV.append("\n")
+        }
+        if mode == .human {
+            matrixCSV.append("\n")
+        }
+        return matrixCSV
+    }
+    
+    func battleFieldsTofile() {
+        let fileName = "Battlefields.csv"
+        let path = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName)
+        var csvText = ""
+        csvText.append(battleFieldsToString())
+        do {
+            try csvText.write(to: path!, atomically: true, encoding: String.Encoding.utf8)
+        } catch {
+            print("Failed to create file")
+            print("\(error)")
+        }
+    }
+    
+    func generateBattlefield()-> [[Int]] {
+        var matrix = [[Int]]() //= Array(repeating: Array(repeating: 0, count: valueRowSize), count: valueRowSize)
+        
+        for _ in 0..<valueRowSize {
+            var row = [Int]()
+            for _ in 0..<valueRowSize {
+                row.append(0)
+            }
+            matrix.append(row)
+            
+        }
+        //matrix[0][0] = 1
+        //print(matrix)
+        
+        
+        
+        var bSuccess = false
+        var vector = Vector(x: 0, y: 0)
+        for _ in 0..<valueShips {
+            bSuccess = false
+            var shipCoord = [Vector]()
+            while !bSuccess {
+                var direction = Direction.horizontal
+                if arc4random_uniform(2) == 1 {
+                    direction = .vertical
+                }
+                shipCoord = [Vector]()
+            
+                // Horizontal or Vertical?
+                if direction == .horizontal {
+                    vector.x = Int(arc4random_uniform(UInt32(valueRowSize - valueShipSize)))
+                    vector.y = Int(arc4random_uniform(UInt32(valueRowSize)))
+                    shipCoord.append(vector)
+                    for i in 1..<valueShipSize {
+                        shipCoord.append(Vector(x: vector.x + i, y: vector.y))
+                    }
+                    bSuccess = checkRulesHorizontal(shipCoord: shipCoord, matrix: matrix)
+                } else {
+                    vector.x = Int(arc4random_uniform(UInt32(valueRowSize)))
+                    vector.y = Int(arc4random_uniform(UInt32(valueRowSize - valueShipSize)))
+                    shipCoord.append(vector)
+                    for i in 1..<valueShipSize {
+                        shipCoord.append(Vector(x: vector.x, y: vector.y + i))
+                    }
+                    bSuccess = checkRulesVertical(shipCoord: shipCoord, matrix: matrix)
+                }
+                print(bSuccess)
+            }
+            
+            // fillMatrix
+            for cell in shipCoord {
+                matrix[cell.x][cell.y] = 1
+            }
+        }
+        
+        print(matrix)
+        return matrix
+    }
+    
 
+    
+    func checkRulesHorizontal(shipCoord: [Vector], matrix: [[Int]]) -> Bool {
+        let vectorFirst = shipCoord.first!
+        let vectorLast = shipCoord.last!
+        
+        // left
+        if vectorFirst.x > 0 {
+            if matrix[vectorFirst.x - 1][vectorFirst.y] == 1 {
+                return false
+            }
+        }
+        
+        // right
+        if vectorLast.x < valueRowSize - 1 {
+            if matrix[vectorLast.x + 1][vectorLast.y] == 1 {
+                return false
+            }
+        }
+        
+        // above
+        if vectorFirst.y > 0 {
+            // left upper corner
+            if vectorFirst.x > 0 {
+                if matrix[vectorFirst.x - 1][vectorFirst.y - 1] == 1 {
+                    return false
+                }
+            }
+            // right upper corner
+            if vectorLast.x < valueRowSize - 1 {
+                if matrix[vectorLast.x + 1][vectorLast.y - 1] == 1 {
+                    return false
+                }
+            }
+            // upper row
+            for col in shipCoord {
+                if matrix[col.x][col.y - 1] == 1 {
+                    return false
+                }
+            }
+        }
+        
+        // below
+        if vectorFirst.y < valueRowSize - 1 {
+            // left lower corner
+            if vectorFirst.x > 0 {
+                if matrix[vectorFirst.x - 1][vectorFirst.y + 1] == 1 {
+                    return false
+                }
+            }
+            // right lower corner
+            if vectorLast.x < valueRowSize - 1 {
+                if matrix[vectorLast.x + 1][vectorLast.y + 1] == 1 {
+                    return false
+                }
+            }
+            // lower row
+            for col in shipCoord {
+                if matrix[col.x][col.y + 1] == 1 {
+                    return false
+                }
+            }
+        }
+        
+        // identity
+        if matrix[vectorFirst.x][vectorFirst.y] == 1 {
+            return false
+        }
+        
+        return true
+    }
+
+    func checkRulesVertical(shipCoord: [Vector], matrix: [[Int]]) -> Bool {
+        let vectorFirst = shipCoord.first!
+        let vectorLast = shipCoord.last!
+        
+        // top
+        if vectorFirst.y > 0 {
+            if matrix[vectorFirst.x][vectorFirst.y - 1] == 1 {
+                return false
+            }
+        }
+        
+        // bottom
+        if vectorLast.y < valueRowSize - 1 {
+            if matrix[vectorLast.x][vectorLast.y + 1] == 1 {
+                return false
+            }
+        }
+        
+        // left
+        if vectorFirst.x > 0 {
+            // left upper corner
+            if vectorFirst.y > 0 {
+                if matrix[vectorFirst.x - 1][vectorFirst.y - 1] == 1 {
+                    return false
+                }
+            }
+            
+            // left lower corner
+            if vectorLast.y < valueRowSize - 1 {
+                if matrix[vectorLast.x - 1][vectorLast.y + 1] == 1 {
+                    return false
+                }
+            }
+            
+            // left row
+            for col in shipCoord {
+                if matrix[col.x - 1][col.y] == 1 {
+                    return false
+                }
+            }
+        }
+        
+        // right
+        if vectorFirst.x < valueRowSize - 1 {
+            // right upper corner
+            if vectorFirst.y > 0 {
+                if matrix[vectorFirst.x + 1][vectorFirst.y - 1] == 1 {
+                    return false
+                }
+            }
+            
+            // right lower corner
+            if vectorLast.y < valueRowSize - 1 {
+                if matrix[vectorLast.x + 1][vectorLast.y + 1] == 1 {
+                    return false
+                }
+            }
+            
+            // right row
+            for col in shipCoord {
+                if matrix[col.x + 1][col.y] == 1 {
+                    return false
+                }
+            }
+        }
+        return true
+    }
 }
+
+
+//[[0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+// [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+// [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+// [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+// [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+// [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+// [1, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+// [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+// [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+// [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+
 
