@@ -17,6 +17,7 @@ enum Mode: Int {
     case array
     case matrix
     case human
+    case shipcells
 }
 
 struct Vector {
@@ -39,26 +40,35 @@ class ViewController: NSViewController {
     }
 
     @IBOutlet weak var rowSize: NSTextField!
-    @IBOutlet weak var shipSize: NSTextField!
-    @IBOutlet weak var numberOfShips: NSTextField!
     @IBOutlet weak var numberOfTrainingData: NSTextField!
     @IBOutlet var resultField: NSTextView!
     @IBOutlet weak var csvSeparator: NSTextField!
+    @IBOutlet weak var numberOfShipsType1: NSTextField!
+    @IBOutlet weak var numberOfShipsType2: NSTextField!
+    @IBOutlet weak var numberOfShipsType3: NSTextField!
+    @IBOutlet weak var numberOfShipsType4: NSTextField!
+    @IBOutlet weak var shipSizeType1: NSTextField!
+    @IBOutlet weak var shipSizeType2: NSTextField!
+    @IBOutlet weak var shipSizeType3: NSTextField!
+    @IBOutlet weak var shipSizeType4: NSTextField!
     
     var valueRowSize = 0
-    var valueShipSize = 0
-    var valueShips = 0
+    var valueShipHitCount = 0
+    var valueShipSize: [Int] = []
+    var valueShips: [Int] = []
     var valueTrainingData = 0
     var valueCSVSeparator = " "
     var mode = Mode.matrix
     
-    var battleFields: [[[Int]]] = []
+    var battleFields: [[[Character]]] = []
     
     @IBAction func modeChanged(_ sender: NSSegmentedControl) {
         if sender.selectedSegment == 0 {
             mode = .matrix
         } else if sender.selectedSegment == 1 {
             mode = .array
+        } else if sender.selectedSegment == 2 {
+            mode = .shipcells
         } else {
             mode = .human
         }
@@ -76,12 +86,21 @@ class ViewController: NSViewController {
     
     @IBAction func generateCSV(_ sender: NSButton) {
         
+        
         valueRowSize = covertNumeric(value: rowSize.cell!.title)
-        valueShipSize = covertNumeric(value: shipSize.cell!.title)
-        valueShips = covertNumeric(value: numberOfShips.cell!.title)
+        valueShipSize.append(covertNumeric(value: shipSizeType1.cell!.title))
+        valueShipSize.append(covertNumeric(value: shipSizeType2.cell!.title))
+        valueShipSize.append(covertNumeric(value: shipSizeType3.cell!.title))
+        valueShipSize.append(covertNumeric(value: shipSizeType4.cell!.title))
+        valueShips.append(covertNumeric(value: numberOfShipsType1.cell!.title))
+        valueShips.append(covertNumeric(value: numberOfShipsType2.cell!.title))
+        valueShips.append(covertNumeric(value: numberOfShipsType3.cell!.title))
+        valueShips.append(covertNumeric(value: numberOfShipsType4.cell!.title))
         valueTrainingData = covertNumeric(value: numberOfTrainingData.cell!.title)
         valueCSVSeparator = csvSeparator.cell!.title
       
+        valueShipHitCount = valueShipSize[0] * valueShips[0] + valueShipSize[1] * valueShips[1] + valueShipSize[2] * valueShips[2] + valueShipSize[3] * valueShips[3]
+        
         battleFields = []
         
         for _ in 0..<valueTrainingData {
@@ -100,40 +119,48 @@ class ViewController: NSViewController {
         return csvText
     }
     
-    func battleFieldToString(battleField: [[Int]]) -> String {
+    func battleFieldToString(battleField: [[Character]]) -> String {
         var matrixCSV = ""
+        var hits = 0
         for i in 0..<valueRowSize {
             var row = battleField[i]
             var rowCSV = ""
             for j in 0..<valueRowSize {
-                rowCSV.append(String(row[j]))
-                if j < valueRowSize - 1 {
-                    rowCSV.append(valueCSVSeparator)
+                if mode == .shipcells {
+                    if row[j] == "1" {
+                        rowCSV.append(String(i * valueRowSize + j))
+                        hits += 1
+                        if hits < valueShipHitCount {
+                            rowCSV.append(valueCSVSeparator)
+                        }
+                    }
+                } else {
+                    rowCSV.append(row[j])
+                    if j < valueRowSize - 1 {
+                        rowCSV.append(valueCSVSeparator)
+                    }
                 }
             }
-            if mode != .array {
+            if mode != .array && mode != .shipcells {
                 rowCSV.append("\n")
-            } else if i < valueRowSize - 1  {
+            } else if i < valueRowSize - 1 && mode != .shipcells  {
                 rowCSV.append(valueCSVSeparator)
             }
             matrixCSV.append(rowCSV)
         }
-        if mode == .array {
-            matrixCSV.append("\n")
-        }
-        if mode == .human {
+        if mode == .array || mode == .human || mode == .shipcells{
             matrixCSV.append("\n")
         }
         return matrixCSV
     }
     
-    func generateBattlefield()-> [[Int]] {
-        var matrix = [[Int]]()
+    func generateBattlefield()-> [[Character]] {
+        var matrix = [[Character]]()
         
         for _ in 0..<valueRowSize {
-            var row = [Int]()
+            var row = [Character]()
             for _ in 0..<valueRowSize {
-                row.append(0)
+                row.append("0")
             }
             matrix.append(row)
             
@@ -141,10 +168,13 @@ class ViewController: NSViewController {
       
         var bSuccess = false
         var vector = Vector(x: 0, y: 0)
-        for _ in 0..<valueShips {
-            bSuccess = false
-            var shipCoord = [Vector]()
-            while !bSuccess {
+        for i in 0..<4 {
+            let valueShipsOfType = valueShips[i]
+            let valueShipSizeOfType = valueShipSize[i]
+            for _ in 0..<valueShipsOfType {
+                bSuccess = false
+                var shipCoord = [Vector]()
+                while !bSuccess {
                 var direction = Direction.horizontal
                 if arc4random_uniform(2) == 1 {
                     direction = .vertical
@@ -153,18 +183,18 @@ class ViewController: NSViewController {
             
                 // Horizontal or Vertical?
                 if direction == .horizontal {
-                    vector.x = Int(arc4random_uniform(UInt32(valueRowSize - valueShipSize)))
+                    vector.x = Int(arc4random_uniform(UInt32(valueRowSize - valueShipSizeOfType)))
                     vector.y = Int(arc4random_uniform(UInt32(valueRowSize)))
                     shipCoord.append(vector)
-                    for i in 1..<valueShipSize {
+                    for i in 1..<valueShipSizeOfType {
                         shipCoord.append(Vector(x: vector.x + i, y: vector.y))
                     }
                     bSuccess = checkRulesHorizontal(shipCoord: shipCoord, matrix: matrix)
                 } else {
                     vector.x = Int(arc4random_uniform(UInt32(valueRowSize)))
-                    vector.y = Int(arc4random_uniform(UInt32(valueRowSize - valueShipSize)))
+                    vector.y = Int(arc4random_uniform(UInt32(valueRowSize - valueShipSizeOfType)))
                     shipCoord.append(vector)
-                    for i in 1..<valueShipSize {
+                    for i in 1..<valueShipSizeOfType {
                         shipCoord.append(Vector(x: vector.x, y: vector.y + i))
                     }
                     bSuccess = checkRulesVertical(shipCoord: shipCoord, matrix: matrix)
@@ -173,28 +203,30 @@ class ViewController: NSViewController {
             
             // fillMatrix
             for cell in shipCoord {
-                matrix[cell.x][cell.y] = 1
+                matrix[cell.x][cell.y] = "1"
             }
+            }
+            
         }
         return matrix
     }
     
 
     
-    func checkRulesHorizontal(shipCoord: [Vector], matrix: [[Int]]) -> Bool {
+    func checkRulesHorizontal(shipCoord: [Vector], matrix: [[Character]]) -> Bool {
         let vectorFirst = shipCoord.first!
         let vectorLast = shipCoord.last!
         
         // left
         if vectorFirst.x > 0 {
-            if matrix[vectorFirst.x - 1][vectorFirst.y] == 1 {
+            if matrix[vectorFirst.x - 1][vectorFirst.y] == "1" {
                 return false
             }
         }
         
         // right
         if vectorLast.x < valueRowSize - 1 {
-            if matrix[vectorLast.x + 1][vectorLast.y] == 1 {
+            if matrix[vectorLast.x + 1][vectorLast.y] == "1" {
                 return false
             }
         }
@@ -203,19 +235,19 @@ class ViewController: NSViewController {
         if vectorFirst.y > 0 {
             // left upper corner
             if vectorFirst.x > 0 {
-                if matrix[vectorFirst.x - 1][vectorFirst.y - 1] == 1 {
+                if matrix[vectorFirst.x - 1][vectorFirst.y - 1] == "1" {
                     return false
                 }
             }
             // right upper corner
             if vectorLast.x < valueRowSize - 1 {
-                if matrix[vectorLast.x + 1][vectorLast.y - 1] == 1 {
+                if matrix[vectorLast.x + 1][vectorLast.y - 1] == "1" {
                     return false
                 }
             }
             // upper row
             for col in shipCoord {
-                if matrix[col.x][col.y - 1] == 1 {
+                if matrix[col.x][col.y - 1] == "1" {
                     return false
                 }
             }
@@ -225,46 +257,46 @@ class ViewController: NSViewController {
         if vectorFirst.y < valueRowSize - 1 {
             // left lower corner
             if vectorFirst.x > 0 {
-                if matrix[vectorFirst.x - 1][vectorFirst.y + 1] == 1 {
+                if matrix[vectorFirst.x - 1][vectorFirst.y + 1] == "1" {
                     return false
                 }
             }
             // right lower corner
             if vectorLast.x < valueRowSize - 1 {
-                if matrix[vectorLast.x + 1][vectorLast.y + 1] == 1 {
+                if matrix[vectorLast.x + 1][vectorLast.y + 1] == "1" {
                     return false
                 }
             }
             // lower row
             for col in shipCoord {
-                if matrix[col.x][col.y + 1] == 1 {
+                if matrix[col.x][col.y + 1] == "1" {
                     return false
                 }
             }
         }
         
         // identity
-        if matrix[vectorFirst.x][vectorFirst.y] == 1 {
+        if matrix[vectorFirst.x][vectorFirst.y] == "1" {
             return false
         }
         
         return true
     }
 
-    func checkRulesVertical(shipCoord: [Vector], matrix: [[Int]]) -> Bool {
+    func checkRulesVertical(shipCoord: [Vector], matrix: [[Character]]) -> Bool {
         let vectorFirst = shipCoord.first!
         let vectorLast = shipCoord.last!
         
         // top
         if vectorFirst.y > 0 {
-            if matrix[vectorFirst.x][vectorFirst.y - 1] == 1 {
+            if matrix[vectorFirst.x][vectorFirst.y - 1] == "1" {
                 return false
             }
         }
         
         // bottom
         if vectorLast.y < valueRowSize - 1 {
-            if matrix[vectorLast.x][vectorLast.y + 1] == 1 {
+            if matrix[vectorLast.x][vectorLast.y + 1] == "1" {
                 return false
             }
         }
@@ -273,21 +305,21 @@ class ViewController: NSViewController {
         if vectorFirst.x > 0 {
             // left upper corner
             if vectorFirst.y > 0 {
-                if matrix[vectorFirst.x - 1][vectorFirst.y - 1] == 1 {
+                if matrix[vectorFirst.x - 1][vectorFirst.y - 1] == "1" {
                     return false
                 }
             }
             
             // left lower corner
             if vectorLast.y < valueRowSize - 1 {
-                if matrix[vectorLast.x - 1][vectorLast.y + 1] == 1 {
+                if matrix[vectorLast.x - 1][vectorLast.y + 1] == "1" {
                     return false
                 }
             }
             
             // left row
             for col in shipCoord {
-                if matrix[col.x - 1][col.y] == 1 {
+                if matrix[col.x - 1][col.y] == "1" {
                     return false
                 }
             }
@@ -297,21 +329,21 @@ class ViewController: NSViewController {
         if vectorFirst.x < valueRowSize - 1 {
             // right upper corner
             if vectorFirst.y > 0 {
-                if matrix[vectorFirst.x + 1][vectorFirst.y - 1] == 1 {
+                if matrix[vectorFirst.x + 1][vectorFirst.y - 1] == "1" {
                     return false
                 }
             }
             
             // right lower corner
             if vectorLast.y < valueRowSize - 1 {
-                if matrix[vectorLast.x + 1][vectorLast.y + 1] == 1 {
+                if matrix[vectorLast.x + 1][vectorLast.y + 1] == "1" {
                     return false
                 }
             }
             
             // right row
             for col in shipCoord {
-                if matrix[col.x + 1][col.y] == 1 {
+                if matrix[col.x + 1][col.y] == "1" {
                     return false
                 }
             }
