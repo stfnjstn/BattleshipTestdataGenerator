@@ -1035,7 +1035,6 @@
                     </view>
                     <connections>
                         <outlet property="csvSeparator" destination="SgE-Uc-34T" id="Md2-rW-pMR"/>
-                        <outlet property="numberOfShips" destination="DoK-z7-63D" id="P9w-2q-JRc"/>
                         <outlet property="numberOfShipsType1" destination="DoK-z7-63D" id="yPx-jW-RJf"/>
                         <outlet property="numberOfShipsType2" destination="1ck-lE-rhx" id="cvb-Id-Bic"/>
                         <outlet property="numberOfShipsType3" destination="8UV-RT-jdn" id="nfO-tR-jCG"/>

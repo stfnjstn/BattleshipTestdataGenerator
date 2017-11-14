@@ -113,7 +113,12 @@ class ViewController: NSViewController {
     
     func battleFieldsToString() -> String {
         var csvText = ""
+        var i = 0
         for battleField in battleFields {
+            if mode == .human {
+                csvText.append("Matrix " + String(i + 1) + "\n")
+                i+=1
+            }
             csvText.append(battleFieldToString(battleField: battleField))
         }
         return csvText
@@ -143,12 +148,12 @@ class ViewController: NSViewController {
             }
             if mode != .array && mode != .shipcells {
                 rowCSV.append("\n")
-            } else if i < valueRowSize - 1 && mode != .shipcells  {
+            } else if i < valueRowSize - 1 && mode != .shipcells {
                 rowCSV.append(valueCSVSeparator)
             }
             matrixCSV.append(rowCSV)
         }
-        if mode == .array || mode == .human || mode == .shipcells{
+        if mode == .array || mode == .human || mode == .shipcells {
             matrixCSV.append("\n")
         }
         return matrixCSV
@@ -231,7 +236,7 @@ class ViewController: NSViewController {
             }
         }
         
-        // above
+        // upper corners
         if vectorFirst.y > 0 {
             // left upper corner
             if vectorFirst.x > 0 {
@@ -245,15 +250,9 @@ class ViewController: NSViewController {
                     return false
                 }
             }
-            // upper row
-            for col in shipCoord {
-                if matrix[col.x][col.y - 1] == "1" {
-                    return false
-                }
-            }
         }
         
-        // below
+        // lower corners
         if vectorFirst.y < valueRowSize - 1 {
             // left lower corner
             if vectorFirst.x > 0 {
@@ -267,15 +266,27 @@ class ViewController: NSViewController {
                     return false
                 }
             }
+        }
+        
+        // check rows
+        for col in shipCoord {
+            // identical row
+            if matrix[col.x][col.y] == "1" {
+                return false
+            }
             // lower row
-            for col in shipCoord {
+            if vectorFirst.y < valueRowSize - 1 {
                 if matrix[col.x][col.y + 1] == "1" {
                     return false
                 }
             }
+            // upper row
+            if vectorFirst.y > 0 {
+                if matrix[col.x][col.y - 1] == "1" {
+                    return false
+                }
+            }
         }
-        
-        // identity
         if matrix[vectorFirst.x][vectorFirst.y] == "1" {
             return false
         }
@@ -301,7 +312,7 @@ class ViewController: NSViewController {
             }
         }
         
-        // left
+        // left corners
         if vectorFirst.x > 0 {
             // left upper corner
             if vectorFirst.y > 0 {
@@ -316,16 +327,9 @@ class ViewController: NSViewController {
                     return false
                 }
             }
-            
-            // left row
-            for col in shipCoord {
-                if matrix[col.x - 1][col.y] == "1" {
-                    return false
-                }
-            }
         }
         
-        // right
+        // right corners
         if vectorFirst.x < valueRowSize - 1 {
             // right upper corner
             if vectorFirst.y > 0 {
@@ -340,9 +344,24 @@ class ViewController: NSViewController {
                     return false
                 }
             }
+        }
+        
+        // check colums
+        for col in shipCoord {
+            // identical col
+            if matrix[col.x][col.y] == "1" {
+                return false
+            }
             
-            // right row
-            for col in shipCoord {
+            // left col
+            if vectorFirst.x > 0 {
+                if matrix[col.x - 1][col.y] == "1" {
+                    return false
+                }
+            }
+            
+            // right col
+            if vectorFirst.x < valueRowSize - 1 {
                 if matrix[col.x + 1][col.y] == "1" {
                     return false
                 }
